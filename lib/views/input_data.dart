@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:flutter/services.dart';
-import 'package:here_sdk/gestures.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:here_sdk/core.dart';
@@ -33,7 +32,7 @@ class _AddDataState extends State<AddData> {
   String title = '';
   String location = '';
   Position? currentPosition;
-
+  bool submitText = false;
   File? _imageFile;
   final picker = ImagePicker();
 
@@ -54,6 +53,7 @@ class _AddDataState extends State<AddData> {
   }
 
   void _uploadImage() async {
+    submitText = true;
     if (_imageFile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -66,18 +66,19 @@ class _AddDataState extends State<AddData> {
       return;
     }
 
-    firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
-        .ref()
-        .child('images')
-        .child(DateTime.now().toString());
-
-    firebase_storage.UploadTask uploadTask = ref.putFile(_imageFile!);
     try {
+      firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+          .ref()
+          .child('images')
+          .child(DateTime.now().toString());
+
+      firebase_storage.UploadTask uploadTask = ref.putFile(_imageFile!);
       await uploadTask.whenComplete(() async {
         String imageUrl = await ref.getDownloadURL();
         saveData(imageUrl);
       });
     } catch (e) {
+      submitText = false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -101,27 +102,16 @@ class _AddDataState extends State<AddData> {
       "cordinates":
           GeoPoint(currentPosition!.latitude, currentPosition!.longitude)
     };
+    // Tambahkan data ke koleksi
+    await collectionRef.add(data);
 
-    try {
-      // Tambahkan data ke koleksi
-      await collectionRef.add(data);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Data berhasil disimpan'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Terjadi kesalahan coba lagi."),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Data berhasil disimpan'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    return Navigator.pop(context);
   }
 
   Future<Position> _getCurrentLocation() async {
@@ -231,8 +221,10 @@ class _AddDataState extends State<AddData> {
 
             // Tambah Data Button
             ElevatedButton(
-              onPressed: _uploadImage,
-              child: Text('Tambah Data'),
+              onPressed: submitText ? null : _uploadImage,
+              child: submitText
+                  ? CircularProgressIndicator()
+                  : Text('Submit'),
             ),
           ],
         ),

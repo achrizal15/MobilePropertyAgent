@@ -12,7 +12,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
+bool isLoading=false;
   Future<void> checkLoginStatus() async {
     final User? user = _auth.currentUser;
     if (user != null) {
@@ -32,6 +32,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> login() async {
+    isLoading=true;
     try {
       final String email = emailController.text.trim();
       final String password = passwordController.text.trim();
@@ -63,6 +64,7 @@ class _LoginScreenState extends State<LoginScreen> {
         MaterialPageRoute(builder: (context) => HomePage()),
       );
     } catch (e) {
+      isLoading=false;
       // Terjadi kesalahan saat login
       // Tampilkan pesan error atau lakukan penanganan kesalahan lainnya
        ScaffoldMessenger.of(context).showSnackBar(
@@ -136,14 +138,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: screenSize.width * 0.8,
                         height: screenSize.height * 0.072,
                         child: ElevatedButton(
-                          onPressed: login,
-                          //  {
-                            // Navigator.push(
-                            //   context,
-                            //   MaterialPageRoute(
-                            //       builder: (context) => HomeScreen()),
-                            // );
-                          // },
+                          onPressed: isLoading?null:login,
                           style: ElevatedButton.styleFrom(
                               padding: EdgeInsets.all(16),
                               backgroundColor:
@@ -151,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(5))),
                           child: Text(
-                            'Login',
+                            isLoading?'Loading':'Login',
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),

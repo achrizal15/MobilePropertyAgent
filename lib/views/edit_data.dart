@@ -37,9 +37,9 @@ class _EditDataState extends State<EditData> {
   double price = 0.0;
   String title = '';
   String location = '';
-  String imageUrlOld="";
+  String imageUrlOld = "";
   Position? currentPosition;
-
+  bool submitText = false;
   File? _imageFile;
   final picker = ImagePicker();
 
@@ -62,7 +62,7 @@ class _EditDataState extends State<EditData> {
       setState(() {
         currentImageUrl = data['image'].toString();
         _titleController.text = data['title'] as String;
-        imageUrlOld=data['image'];
+        imageUrlOld = data['image'];
         _priceController.text = (data['price'] ?? 0.0).toString();
         if (data['cordinates'] != null) {
           GeoPoint coordinates = data['cordinates'] as GeoPoint;
@@ -92,27 +92,41 @@ class _EditDataState extends State<EditData> {
   }
 
   void _uploadImage() async {
-    if (_imageFile != null) {
-      //  firebase_storage.FirebaseStorage storage = firebase_storage.FirebaseStorage.instance;
-      // await storage.refFromURL(imageUrlOld).delete();
-      if(imageUrlOld!=""){
-         await firebase_storage.FirebaseStorage.instance.refFromURL(imageUrlOld).delete();
+    submitText=true;
+    try {
+      if (_imageFile != null) {
+        if (imageUrlOld != "") {
+          await firebase_storage.FirebaseStorage.instance
+              .refFromURL(imageUrlOld)
+              .delete();
+        }
+        firebase_storage.Reference ref = firebase_storage
+            .FirebaseStorage.instance
+            .ref()
+            .child('images')
+            .child(DateTime.now().toString());
+
+        firebase_storage.UploadTask uploadTask = ref.putFile(_imageFile!);
+
+        await uploadTask.whenComplete(() async {
+          String imageUrl = await ref.getDownloadURL();
+          saveData(imageUrl);
+        });
+        return;
       }
-      firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
-          .ref()
-          .child('images')
-          .child(DateTime.now().toString());
-
-      firebase_storage.UploadTask uploadTask = ref.putFile(_imageFile!);
-
-      await uploadTask.whenComplete(() async {
-        String imageUrl = await ref.getDownloadURL();
-        saveData(imageUrl);
-      });
+      saveData(currentImageUrl);
       return;
+    } catch (e) {
+      submitText=false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
+          backgroundColor: Colors.red,
+        ),
+      );
     }
-    saveData(currentImageUrl);
-    return;
   }
 
   void saveData(imageUrl) async {
@@ -125,28 +139,16 @@ class _EditDataState extends State<EditData> {
       "coordinates":
           GeoPoint(currentPosition!.latitude, currentPosition!.longitude),
     };
-
-    try {
-      await collectionRef.doc(widget.documentId).update(data);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Data berhasil dirubah"),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Terjadi kesalahan coba lagi."),
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
+    await collectionRef.doc(widget.documentId).update(data);
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Data berhasil dirubah"),
+        duration: Duration(seconds: 2),
+        behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
+        backgroundColor: Colors.green,
+      ),
+    );
   }
 
   Future<Position> _getCurrentLocation() async {
@@ -211,34 +213,38 @@ class _EditDataState extends State<EditData> {
               ),
             SizedBox(height: 16.0),
             ElevatedButton(
-              onPressed: () => {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text("Konfirmasi"),
-                      content: Text("Perbarui item ini?"),
-                      actions: [
-                        TextButton(
-                          child: Text("Batal"),
-                          onPressed: () {
-                            Navigator.pop(context);
+              onPressed: submitText
+                  ? null
+                  : () => {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text("Konfirmasi"),
+                              content: Text("Perbarui item ini?"),
+                              actions: [
+                                TextButton(
+                                  child: Text("Batal"),
+                                  onPressed: () {
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                                TextButton(
+                                  child: Text("Lanjutkan"),
+                                  onPressed: () {
+                                    // Panggil fungsi onDelete setelah konfirmasi
+                                    _uploadImage();
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                              ],
+                            );
                           },
-                        ),
-                        TextButton(
-                          child: Text("Lanjutkan"),
-                          onPressed: () {
-                            // Panggil fungsi onDelete setelah konfirmasi
-                            _uploadImage();
-                            Navigator.pop(context);
-                          },
-                        ),
-                      ],
-                    );
-                  },
-                )
-              },
-              child: Text('Simpan Perubahan'),
+                        )
+                      },
+              child: submitText
+                  ? CircularProgressIndicator()
+                  : Text('Submit'),
             ),
           ],
         ),

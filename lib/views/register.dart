@@ -6,8 +6,9 @@ class RegisterScreen extends StatelessWidget {
 
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-
+  bool isLoading = false;
   Future<void> register(BuildContext context) async {
+    isLoading = true;
     try {
       final String email = emailController.text.trim();
       final String password = passwordController.text.trim();
@@ -17,38 +18,33 @@ class RegisterScreen extends StatelessWidget {
         return;
       }
 
-      // Membuat akun menggunakan email dan password
-      try {
-        final UserCredential userCredential =
-            await _auth.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Register berhasil"),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
-            backgroundColor: Colors.green,
-          ),
-        );
-        return Navigator.pop(context);
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.fixed,
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      final UserCredential userCredential =
+          await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Register berhasil"),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.fixed, // Mengubah behavior menjadi fixed
+          backgroundColor: Colors.green,
+        ),
+      );
+      return Navigator.pop(context);
 
       // Akun berhasil dibuat
       // Lakukan navigasi kembali ke halaman login
     } catch (e) {
-      // Terjadi kesalahan saat membuat akun
-      // Tampilkan pesan error atau lakukan penanganan kesalahan lainnya
+      isLoading = false;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.fixed,
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -112,9 +108,8 @@ class RegisterScreen extends StatelessWidget {
                         width: screenSize.width * 0.8,
                         height: screenSize.height * 0.072,
                         child: ElevatedButton(
-                          onPressed: () {
-                            register(
-                                context); // Panggil metode register dengan parameter context
+                          onPressed:isLoading?null: () {
+                            register(context); // Panggil metode register dengan parameter context
                           },
                           style: ElevatedButton.styleFrom(
                             padding: EdgeInsets.all(16),
@@ -125,7 +120,7 @@ class RegisterScreen extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            'Register',
+                            isLoading ? 'loading' : 'Register',
                             style: TextStyle(fontSize: 18, color: Colors.white),
                           ),
                         ),
